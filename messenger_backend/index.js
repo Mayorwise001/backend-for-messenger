@@ -1,0 +1,52 @@
+const express = require('express');
+const morgan = require('morgan');
+require('dotenv').config();
+const indexrouter = require('./routes/routes')
+const index = require('./routes/index')
+const mongoose = require('mongoose');
+const cors = require('cors');
+
+
+const app = express();
+app.use(morgan('dev'));
+app.use(express.json());
+
+    
+
+const MONGODB_URI = process.env.MONGODB_URI;
+mongoose.connect(MONGODB_URI)
+.then(() => console.log('Connected to MongoDB'))
+.catch(err => console.error('MongoDB connection error:', err));
+const allowedOrigins = [
+    'http://localhost:3001'
+  ];
+
+  const corsOptions = {
+    origin: function (origin, callback) {
+      // Allow requests with no origin, like mobile apps or curl requests
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg = 'The CORS policy for this site does not allow access from the specified origin.';
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
+    credentials: true
+  };
+  
+  app.use(cors(corsOptions));
+
+
+
+// Define a route for the root URL
+app.use('/api', indexrouter);
+
+
+
+
+
+const PORT = process.env.PORT;
+
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});
