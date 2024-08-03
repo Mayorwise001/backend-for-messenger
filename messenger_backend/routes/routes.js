@@ -6,6 +6,12 @@ const router = express.Router();
 const User = require('../model/user');
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
+const secretKey = 'ADMIN';
+const jwt = require('jsonwebtoken');
+const Token = require('../model/token');
+const homeData = require('../config/homeData')
+
+
 
 
 router.use(passport.initialize());
@@ -14,6 +20,28 @@ router.use(passport.session())
 
 
 
+
+const verifyToken = async (req, res, next) => {
+  const token = req.headers['authorization'];
+
+  if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+  }
+
+  try {
+      const decoded = jwt.verify(token, secretKey);
+      const tokenRecord = await Token.findOne({ token });
+
+      if (!tokenRecord) {
+          return res.status(401).json({ message: 'Invalid token' });
+      }
+
+      req.userId = decoded.id;
+      next();
+  } catch (error) {
+      return res.status(401).json({ message: 'Unauthorized' });
+  }
+};
 
 router.post('/sign-up', [
 
@@ -79,32 +107,29 @@ router.post('/sign-up', [
   router.post('/login', [
     check('username').notEmpty().withMessage('Username is required'),
     check('password').notEmpty().withMessage('Password is required')
-  ], async (req, res) => {
+  ], async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
   
-    const { username, password } = req.body;
+    passport.authenticate('local', async (err, user, info) => {
+      if (err) return next(err);
+      if (!user) return res.status(400).json({ error: info.message });
   
-    try {
-      // Find the user by username
-      const user = await User.findOne({ username });
-      if (!user) {
-        return res.status(400).json({ error: 'Invalid username or password' });
-      }
+      req.logIn(user, async (err) => {
+        if (err) return next(err);
   
-      // Compare the password with the hashed password in the database
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        return res.status(400).json({ error: 'Invalid username or password' });
-      }
+        const token = jwt.sign({ id: user.id }, secretKey, { expiresIn: '1h' });
   
-      // If login is successful
-      res.status(200).json({ message: 'Login successful' });
-    } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
-    }
+        try {
+          await Token.create({ token, userId: user._id });
+          return res.status(200).json({ message: 'Login successful', user, token });
+        } catch (error) {
+          return res.status(500).json({ message: 'Error saving token' });
+        }
+      });
+    })(req, res, next);
   });
   
 
@@ -116,8 +141,29 @@ router.post('/logout', (req, res) => {
       }
       res.status(200).json({ message: 'Logged out successfully' });
   });
+  
 });
 
+router.get('/check-auth', verifyToken, (req, res) => {
+  res.status(200).json({ message: 'Authenticated' });
+});
+
+router.get('/home', verifyToken, async (req, res, next) => { 
+  return res.json({
+      ...homeData,
+      message: 'Your Login was successful'
+    });
+})
+
+
+router.get('/users', async (req, res) => {
+  try {
+    const users = await User.find({}, 'firstName lastName'); // Fetch only firstName and lastName
+    res.json(users);
+  } catch (error) {
+    res.status(500).send('Server error');
+  }
+});
 
 passport.use(new LocalStrategy(
   { usernameField: 'username' }, // Use email as the username field

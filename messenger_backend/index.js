@@ -18,7 +18,9 @@ mongoose.connect(MONGODB_URI)
 .then(() => console.log('Connected to MongoDB'))
 .catch(err => console.error('MongoDB connection error:', err));
 const allowedOrigins = [
-    'http://localhost:3001'
+    'http://localhost:3002',
+    'https://messenger-users.vercel.app/login',
+    'https://messenger-users.vercel.app'
   ];
 
   const corsOptions = {
