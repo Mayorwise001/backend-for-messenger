@@ -21,6 +21,7 @@ const allowedOrigins = [
     'http://localhost:3002',
     'https://messenger-users.vercel.app/login',
     'https://messenger-users.vercel.app'
+
   ];
 
   const corsOptions = {
