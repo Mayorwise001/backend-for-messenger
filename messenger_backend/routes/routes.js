@@ -10,7 +10,8 @@ const secretKey = 'ADMIN';
 const jwt = require('jsonwebtoken');
 const Token = require('../model/token');
 const homeData = require('../config/homeData')
-
+const multer = require('multer');
+const path = require('path');
 
 
 
@@ -42,6 +43,35 @@ const verifyToken = async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized' });
   }
 };
+
+// Set storage engine
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage: storage });
+// Check file type
+function checkFileType(file, cb) {
+  const filetypes = /jpeg|jpg|png|gif/;
+  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = filetypes.test(file.mimetype);
+
+  if (mimetype && extname) {
+    return cb(null, true);
+  } else {
+    cb('Error: Images Only!');
+  }
+}
+
+
+// Serve static files from the "uploads" directory
+const app = express();
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 router.post('/sign-up', [
 
@@ -156,7 +186,7 @@ router.get('/home', verifyToken, async (req, res, next) => {
 })
 
 
-router.get('/users', async (req, res) => {
+router.get('/users',verifyToken, async (req, res) => {
   try {
     const users = await User.find({}, 'firstName lastName'); // Fetch only firstName and lastName
     res.json(users);
@@ -164,6 +194,38 @@ router.get('/users', async (req, res) => {
     res.status(500).send('Server error');
   }
 });
+
+router.get('/users/me', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId, 'firstName lastName username profilePicture facebookURL linkedInURL twitterURL githubPages aboutMe');
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).send('Server error');
+  }
+});
+
+// Update current user's profile
+router.put('/users/me', verifyToken, upload.single('profilePicture'), async (req, res) => {
+  try {
+    const updates = req.body;
+    if (req.file) {
+      updates.profilePicture = `uploads/${req.file.filename}`;
+    }
+    const user = await User.findByIdAndUpdate(req.userId, updates, { new: true });
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).send('Server error');
+  }
+});
+
+
+
 
 passport.use(new LocalStrategy(
   { usernameField: 'username' }, // Use email as the username field

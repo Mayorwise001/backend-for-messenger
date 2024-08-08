@@ -11,7 +11,7 @@ const app = express();
 app.use(morgan('dev'));
 app.use(express.json());
 
-    
+app.use('/uploads', express.static('uploads'));
 
 const MONGODB_URI = process.env.MONGODB_URI;
 mongoose.connect(MONGODB_URI)

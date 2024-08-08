@@ -20,6 +20,30 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  profilePicture: {
+    type: String, // URL to the profile picture
+    default: '',
+  },
+  facebookURL: {
+    type: String,
+    default: '',
+  },
+  linkedInURL: {
+    type: String,
+    default: '',
+  },
+  twitterURL: {
+    type: String,
+    default: '',
+  },
+  githubURL: {
+    type: String,
+    default: '',
+  },
+  aboutMe: {
+    type: String,
+    default: '',
+  },
 });
 
 module.exports = mongoose.model('User', userSchema);
