@@ -5,24 +5,15 @@ const indexrouter = require('./routes/routes')
 const index = require('./routes/index')
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
 
 
 const app = express();
 app.use(morgan('dev'));
 app.use(express.json());
 
-// app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static('uploads'));
 
-// Ensure the uploads directory exists
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
-}
 
-// Serve static files from the uploads directory
-app.use('/uploads', express.static(uploadsDir));
 
 
 
@@ -31,7 +22,7 @@ mongoose.connect(MONGODB_URI)
 .then(() => console.log('Connected to MongoDB'))
 .catch(err => console.error('MongoDB connection error:', err));
 const allowedOrigins = [
-    'http://localhost:3002',
+    'http://localhost:3001',
     'https://messenger-users.vercel.app/login',
     'https://messenger-users.vercel.app'
 

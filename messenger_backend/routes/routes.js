@@ -12,7 +12,7 @@ const Token = require('../model/token');
 const homeData = require('../config/homeData')
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+
 
 
 
@@ -46,36 +46,18 @@ const verifyToken = async (req, res, next) => {
 };
 
 // Set storage engine
-// const storage = multer.diskStorage({
-//   destination: function (req, file, cb) {
-//     cb(null, 'uploads/');
-//   },
-//   filename: function (req, file, cb) {
-//     cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
-//   }
-// });
-
-// const upload = multer({ storage: storage });
-
-
-// Set up storage engine for multer
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-      cb(null, 'uploads/'); // Store in the uploads directory
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
   },
-  filename: (req, file, cb) => {
-      cb(null, Date.now() + path.extname(file.originalname)); // Append timestamp to avoid conflicts
-  },
+  filename: function (req, file, cb) {
+    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+  }
 });
 
-const upload = multer({ storage });
+const upload = multer({ storage: storage });
 
 
-// Ensure the uploads directory exists
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
-}
 
 // Check file type
 function checkFileType(file, cb) {
@@ -234,8 +216,8 @@ router.put('/users/me', verifyToken, upload.single('profilePicture'), async (req
   try {
     const updates = req.body;
     if (req.file) {
-      // updates.profilePicture = `uploads/${req.file.filename}`;
-      updates.profilePicture = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+      updates.profilePicture = `uploads/${req.file.filename}`;
+      
     }
     const user = await User.findByIdAndUpdate(req.userId, updates, { new: true });
     if (!user) {
