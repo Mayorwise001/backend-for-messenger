@@ -9,6 +9,7 @@ const LocalStrategy = require('passport-local').Strategy;
 const secretKey = 'ADMIN';
 const jwt = require('jsonwebtoken');
 const Token = require('../model/token');
+const Message = require('../model/message');
 const homeData = require('../config/homeData')
 const multer = require('multer');
 const path = require('path');
@@ -56,7 +57,6 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
-
 
 
 // Check file type
@@ -199,6 +199,7 @@ router.get('/users',verifyToken, async (req, res) => {
   }
 });
 
+
 router.get('/users/me', verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.userId, 'firstName lastName username profilePicture facebookURL linkedInURL twitterURL githubPages aboutMe');
@@ -211,23 +212,84 @@ router.get('/users/me', verifyToken, async (req, res) => {
   }
 });
 
-// Update current user's profile
-router.put('/users/me', verifyToken, upload.single('profilePicture'), async (req, res) => {
+
+
+// Get messages between the current user and a specified user
+router.get('/messages/:receiverId', verifyToken, async (req, res) => {
   try {
-    const updates = req.body;
-    if (req.file) {
-      updates.profilePicture = `uploads/${req.file.filename}`;
-      
-    }
-    const user = await User.findByIdAndUpdate(req.userId, updates, { new: true });
-    if (!user) {
-      return res.status(404).send('User not found');
-    }
-    res.json(user);
+    const { receiverId } = req.params;
+    const messages = await Message.find({
+      $or: [
+        { sender: req.userId, receiver: receiverId },
+        { sender: receiverId, receiver: req.userId },
+      ],
+    }).sort('createdAt');
+    res.json(messages);
   } catch (error) {
     res.status(500).send('Server error');
   }
 });
+
+
+
+router.get('/messages/:userId', async (req, res) => {
+  const userId = req.params.userId;
+  const currentUserId = req.userId; // Get the current user's ID from the request
+
+  try {
+    const messages = await Message.find({
+      $or: [
+        { sender: currentUserId, receiver: userId },
+        { sender: userId, receiver: currentUserId }
+      ]
+    }).populate('sender', 'username').populate('receiver', 'username'); // Populate sender and receiver usernames
+
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Send a message to a specified user
+router.post('/messages/:receiverId', verifyToken, async (req, res) => {
+  try {
+    const { receiverId } = req.params;
+    const { text } = req.body;
+
+    const message = await Message.create({
+      sender: req.userId,
+      receiver: receiverId,
+      text,
+    });
+
+    res.status(201).json(message);
+  } catch (error) {
+    res.status(500).send('Server error');
+  }
+});
+
+// router.post('/messages/:receiverId', async (req, res) => {
+//   const { text } = req.body;
+//   const senderId = req.user._id; // Get the current user's ID from the request
+//   const receiverId = req.params.receiverId;
+
+//   try {
+//     const newMessage = new Message({
+//       text,
+//       sender: senderId,
+//       receiver: receiverId
+//     });
+
+//     await newMessage.save();
+//     res.status(201).json(newMessage);
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// });
+
+
+
+
 
 
 
