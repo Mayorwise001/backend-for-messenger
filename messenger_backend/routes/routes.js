@@ -213,6 +213,50 @@ router.get('/users/me', verifyToken, async (req, res) => {
 });
 
 
+router.put('/users/me', verifyToken, upload.single('profilePicture'), async (req, res) => {
+  try {
+    // Find user by ID from token
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    // Update fields from request body
+    const updates = ['firstName', 'lastName', 'username', 'facebookURL', 'linkedInURL', 'twitterURL', 'githubPages', 'aboutMe'];
+    updates.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        user[field] = req.body[field];
+      }
+    });
+
+    // If there's a new profile picture, update it
+    if (req.file) {
+      user.profilePicture = req.file.path; // Store the path of the uploaded file
+    }
+
+    // Save the updated user
+    await user.save();
+
+    // Respond with the updated user data (excluding sensitive information)
+    res.json({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      username: user.username,
+      profilePicture: user.profilePicture,
+      facebookURL: user.facebookURL,
+      linkedInURL: user.linkedInURL,
+      twitterURL: user.twitterURL,
+      githubPages: user.githubPages,
+      aboutMe: user.aboutMe,
+    });
+  } catch (error) {
+    res.status(500).send('Server error');
+  }
+});
+
+
+
+
 
 // Get messages between the current user and a specified user
 router.get('/messages/:receiverId', verifyToken, async (req, res) => {
